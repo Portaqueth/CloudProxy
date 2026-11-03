@@ -95,6 +95,12 @@
             
             <button onclick="addCurrentToBookmark()" title="Bookmark" class="text-gray-400 hover:text-yellow-400 px-1 text-sm"><i class="fa-regular fa-star" id="bookmarkStarIcon"></i></button>
             <button onclick="downloadCurrentPage()" title="Download URL Ini" class="text-gray-400 hover:text-green-400 px-1 text-xs"><i class="fa-solid fa-download"></i></button>
+            
+            <!-- Tombol Solusi A: Unblock Direct View -->
+            <button onclick="openDirectView()" title="Bypass Verifikasi / Direct Unblock" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2.5 py-1 rounded font-medium flex items-center gap-1 whitespace-nowrap">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> Unblock
+            </button>
+            
             <button onclick="handleSearch()" class="bg-cfOrange hover:bg-orange-600 text-white text-xs px-3 py-1 rounded font-medium">Cari</button>
         </div>
 
@@ -139,7 +145,7 @@
                 </button>
             </div>
 
-            <div class="flex-1 relative bg-[#121212]" id="viewportContainer"></div>
+            <div class="flex-1 relative bg-white" id="viewportContainer"></div>
         </section>
     </main>
 
@@ -273,8 +279,6 @@
             } else {
                 const iframe = document.createElement('iframe');
                 iframe.className = "w-full h-full border-none bg-white";
-                // Tambahkan izin sandbox penuh untuk membuka pemblokiran iframe di HP
-                iframe.setAttribute('sandbox', 'allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation');
                 iframe.src = currentTab.proxyUrl;
                 container.appendChild(iframe);
             }
@@ -315,6 +319,16 @@
             renderTabs();
             renderViewport();
             checkBookmarkStatus();
+        }
+
+        // SOLUSI A: Buka Tautan Asli Secara Langsung (Bypass Anti-Bot WAF)
+        function openDirectView() {
+            const currentTab = tabs.find(t => t.id === activeTabId);
+            if (currentTab && currentTab.rawUrl) {
+                window.open(currentTab.rawUrl, '_blank');
+            } else {
+                alert('Silakan ketik URL situs terlebih dahulu.');
+            }
         }
 
         function changeEngine() {
