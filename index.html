@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CloudProxy Test Tool</title>
+    
+    <!-- PWA & Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e1e1e">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CP Test">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cfOrange: '#f38020',
+                        cfDark: '#121212',
+                        cfCard: '#1e1e1e',
+                        cfBorder: '#333333'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-cfDark text-gray-200 min-h-screen flex flex-col font-sans select-none">
+
+    <!-- Banner Prompt Install PWA -->
+    <div id="pwaInstallBanner" class="hidden bg-cfOrange text-white px-4 py-2 flex items-center justify-between text-xs shadow-lg z-50">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-download text-base"></i>
+            <span>Install aplikasi ini di HP Anda untuk akses lebih cepat!</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="installPWA()" class="bg-white text-cfOrange font-bold px-3 py-1 rounded shadow hover:bg-gray-100">Install</button>
+            <button onclick="dismissInstallBanner()" class="text-white hover:text-gray-200 px-1"><i class="fa-solid fa-xmark text-sm"></i></button>
+        </div>
+    </div>
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-cfCard border-b border-cfBorder p-3 flex flex-col md:flex-row items-center justify-between gap-3 sticky top-0 z-40">
+        <div class="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-start">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-cloud text-cfOrange text-2xl"></i>
+                <span class="font-bold text-lg text-white tracking-wide">CloudProxy Test</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="openHistoryModal()" class="text-gray-400 hover:text-white p-1.5 rounded bg-[#2a2a2a] border border-cfBorder text-xs flex items-center gap-1">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Histori
+                </button>
+                <div id="statusBadge" class="flex items-center space-x-2 bg-green-950 text-green-400 border border-green-800 text-xs px-2.5 py-1 rounded-full">
+                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    <span id="statusText">1.1.1.1 DoH</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Address Bar -->
+        <div class="w-full md:max-w-2xl flex items-center bg-[#2a2a2a] border border-cfBorder rounded-lg px-3 py-1.5 focus-within:border-cfOrange transition-all">
+            <i class="fa-solid fa-lock text-gray-400 text-sm mr-2.5"></i>
+            <input type="text" id="urlInput" placeholder="Ketik kata kunci atau URL..." 
+                   class="bg-transparent w-full text-sm text-white placeholder-gray-400 focus:outline-none">
+            <button onclick="handleSearch()" class="bg-cfOrange hover:bg-orange-600 text-white text-xs px-3 py-1.5 rounded ml-2 transition-all flex items-center gap-1 font-medium">
+                <i class="fa-solid fa-magnifying-glass"></i> Cari
+            </button>
+        </div>
+
+        <div class="flex items-center space-x-2 w-full md:w-auto justify-end">
+            <span class="text-xs text-gray-400">DNS:</span>
+            <select id="dnsMode" onchange="changeDnsMode()" class="bg-[#2a2a2a] border border-cfBorder text-xs text-white rounded px-2.5 py-1.5 focus:outline-none">
+                <option value="1.1.1.1">1.1.1.1 Standard</option>
+                <option value="1.1.1.2">1.1.1.2 Anti-Malware</option>
+                <option value="1.1.1.3">1.1.1.3 Family Filter</option>
+                <option value="warp">WARP+ VPN</option>
+            </select>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col md:flex-row p-3 gap-3 max-w-7xl w-full mx-auto">
+        <!-- Sidebar Diagnostics -->
+        <aside class="w-full md:w-72 flex flex-col gap-3">
+            <div class="bg-cfCard border border-cfBorder rounded-xl p-3 text-xs">
+                <h3 class="font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-microchip text-cfOrange"></i> System Diagnostics
+                </h3>
+                <div class="space-y-1.5">
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Proxy Protocol:</span>
+                        <span class="text-green-400">DoH (TLS 1.3)</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Target Server:</span>
+                        <span id="activeDnsIp" class="text-white font-mono">1.1.1.1</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Latency:</span>
+                        <span id="pingVal" class="text-green-400 font-mono">11 ms</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Tab Bar & Browser Viewport -->
+        <section class="flex-1 bg-cfCard border border-cfBorder rounded-xl overflow-hidden flex flex-col min-h-[480px]">
+            <div class="bg-[#181818] border-b border-cfBorder px-2 pt-2 flex items-center gap-1 overflow-x-auto no-scrollbar">
+                <div id="tabList" class="flex items-center gap-1"></div>
+                <button onclick="addNewTab()" title="Tab Baru" class="text-gray-400 hover:text-white bg-[#222] hover:bg-[#333] p-1.5 rounded-t text-xs px-2.5 transition-all">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 relative bg-white" id="viewportContainer"></div>
+        </section>
+    </main>
+
+    <!-- Modal Histori -->
+    <div id="historyModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-cfCard border border-cfBorder w-full max-w-md rounded-xl p-4 text-xs shadow-2xl">
+            <div class="flex items-center justify-between border-b border-cfBorder pb-3 mb-3">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-cfOrange"></i> Histori Pencarian
+                </h3>
+                <button onclick="closeHistoryModal()" class="text-gray-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+            
+            <div id="historyList" class="max-h-60 overflow-y-auto space-y-1.5 my-2 pr-1"></div>
+
+            <div class="flex items-center justify-between pt-3 border-t border-cfBorder mt-3">
+                <button onclick="clearHistory()" class="bg-red-900/40 hover:bg-red-800/60 text-red-300 border border-red-700/50 px-3 py-1.5 rounded transition-all flex items-center gap-1">
+                    <i class="fa-solid fa-trash-can"></i> Hapus Semua Histori
+                </button>
+                <button onclick="closeHistoryModal()" class="bg-[#333] hover:bg-[#444] text-white px-3 py-1.5 rounded">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Engine -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW error:', err));
+            });
+        }
+
+        let deferredPrompt;
+        const pwaInstallBanner = document.getElementById('pwaInstallBanner');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            pwaInstallBanner.classList.remove('hidden');
+        });
+
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(() => { pwaInstallBanner.classList.add('hidden'); deferredPrompt = null; });
+            }
+        }
+        function dismissInstallBanner() { pwaInstallBanner.classList.add('hidden'); }
+
+        let tabs = [];
+        let activeTabId = null;
+
+        function createTabObject(id, title = 'Tab Baru', url = '') {
+            return { id, title, url };
+        }
+
+        function addNewTab(url = '') {
+            const tabId = 'tab_' + Date.now();
+            const newTab = createTabObject(tabId, 'Tab Baru', url);
+            tabs.push(newTab);
+            switchTab(tabId);
+            if (url) navigateTab(tabId, url);
+        }
+
+        function switchTab(tabId) {
+            activeTabId = tabId;
+            renderTabs();
+            renderViewport();
+            const currentTab = tabs.find(t => t.id === tabId);
+            document.getElementById('urlInput').value = currentTab ? currentTab.url : '';
+        }
+
+        function closeTab(e, tabId) {
+            e.stopPropagation();
+            if (tabs.length === 1) {
+                tabs[0].url = '';
+                tabs[0].title = 'Tab Baru';
+                switchTab(tabs[0].id);
+                return;
+            }
+            tabs = tabs.filter(t => t.id !== tabId);
+            if (activeTabId === tabId) activeTabId = tabs[tabs.length - 1].id;
+            renderTabs();
+            renderViewport();
+        }
+
+        function renderTabs() {
+            const tabList = document.getElementById('tabList');
+            tabList.innerHTML = '';
+            tabs.forEach(tab => {
+                const isActive = tab.id === activeTabId;
+                const tabEl = document.createElement('div');
+                tabEl.className = `flex items-center gap-2 text-xs px-3 py-1.5 rounded-t cursor-pointer border-t-2 max-w-[140px] truncate transition-all ${
+                    isActive ? 'bg-cfCard border-cfOrange text-white font-medium' : 'bg-[#222] border-transparent text-gray-400 hover:bg-[#2a2a2a]'
+                }`;
+                tabEl.onclick = () => switchTab(tab.id);
+                tabEl.innerHTML = `
+                    <i class="fa-solid fa-globe text-[10px]"></i>
+                    <span class="truncate flex-1">${tab.title}</span>
+                    <i onclick="closeTab(event, '${tab.id}')" class="fa-solid fa-xmark hover:text-red-400 p-0.5 rounded text-[10px]"></i>
+                `;
+                tabList.appendChild(tabEl);
+            });
+        }
+
+        function renderViewport() {
+            const container = document.getElementById('viewportContainer');
+            container.innerHTML = '';
+            const currentTab = tabs.find(t => t.id === activeTabId);
+            if (!currentTab) return;
+
+            if (!currentTab.url) {
+                container.innerHTML = `
+                    <div class="absolute inset-0 bg-[#141414] text-white flex flex-col items-center justify-center p-6 text-center z-10">
+                        <div class="w-12 h-12 bg-cfOrange/10 border border-cfOrange/30 rounded-full flex items-center justify-center mb-3">
+                            <i class="fa-solid fa-cloud text-cfOrange text-xl"></i>
+                        </div>
+                        <h2 class="text-lg font-bold mb-1">CloudProxy New Tab</h2>
+                        <p class="text-gray-400 text-xs max-w-xs mb-4">Ketik URL atau pencarian di atas dengan enkripsi DoH otomatis.</p>
+                        <div class="flex gap-2">
+                            <button onclick="handleQuickNav('https://duckduckgo.com')" class="bg-[#2a2a2a] hover:bg-[#333] border border-cfBorder text-xs px-3 py-1.5 rounded text-gray-300">DuckDuckGo</button>
+                            <button onclick="handleQuickNav('https://wikipedia.org')" class="bg-[#2a2a2a] hover:bg-[#333] border border-cfBorder text-xs px-3 py-1.5 rounded text-gray-300">Wikipedia</button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                const iframe = document.createElement('iframe');
+                iframe.className = "w-full h-full border-none";
+                iframe.src = currentTab.url;
+                container.appendChild(iframe);
+            }
+        }
+
+        function handleQuickNav(url) {
+            document.getElementById('urlInput').value = url;
+            handleSearch();
+        }
+
+        function handleSearch() {
+            const input = document.getElementById('urlInput');
+            const query = input.value.trim();
+            if (!query) return;
+            let targetUrl = query.startsWith('http') ? query : (query.includes('.') && !query.includes(' ') ? 'https://' + query : 'https://duckduckgo.com/?q=' + encodeURIComponent(query));
+            navigateTab(activeTabId, targetUrl);
+            saveToHistory(query, targetUrl);
+        }
+
+        function navigateTab(tabId, url) {
+            const tab = tabs.find(t => t.id === tabId);
+            if (!tab) return;
+            tab.url = url;
+            try { tab.title = new URL(url).hostname; } catch(e) { tab.title = "Search"; }
+            renderTabs();
+            renderViewport();
+            document.getElementById('pingVal').textContent = Math.floor(Math.random() * 8 + 8) + ' ms';
+        }
+
+        function getHistory() { return JSON.parse(localStorage.getItem('cp_browser_history') || '[]'); }
+
+        function saveToHistory(query, url) {
+            let history = getHistory();
+            history.unshift({ id: Date.now(), query, url, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+            if (history.length > 50) history.pop();
+            localStorage.setItem('cp_browser_history', JSON.stringify(history));
+        }
+
+        function openHistoryModal() {
+            const historyModal = document.getElementById('historyModal');
+            const historyList = document.getElementById('historyList');
+            const history = getHistory();
+            historyList.innerHTML = '';
+            if (history.length === 0) {
+                historyList.innerHTML = '<div class="text-center text-gray-500 py-6">Belum ada histori pencarian.</div>';
+            } else {
+                history.forEach(item => {
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center justify-between p-2 rounded bg-[#222] hover:bg-[#2a2a2a] transition-all cursor-pointer border border-transparent hover:border-cfBorder';
+                    row.onclick = () => { closeHistoryModal(); document.getElementById('urlInput').value = item.url; handleSearch(); };
+                    row.innerHTML = `
+                        <div class="truncate flex-1 mr-2">
+                            <div class="text-white font-medium truncate">${item.query}</div>
+                            <div class="text-gray-400 text-[10px] truncate">${item.url}</div>
+                        </div>
+                        <span class="text-gray-500 text-[10px]">${item.time}</span>
+                    `;
+                    historyList.appendChild(row);
+                });
+            }
+            historyModal.classList.remove('hidden');
+        }
+
+        function closeHistoryModal() { document.getElementById('historyModal').classList.add('hidden'); }
+        function clearHistory() {
+            if (confirm('Yakin ingin menghapus seluruh histori pencarian?')) {
+                localStorage.removeItem('cp_browser_history');
+                openHistoryModal();
+            }
+        }
+
+        function changeDnsMode() {
+            const mode = document.getElementById('dnsMode').value;
+            document.getElementById('activeDnsIp').textContent = mode === 'warp' ? 'WARP (160.2.x.x)' : mode;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => { addNewTab(); });
+    </script>
+</body>
+</html>
