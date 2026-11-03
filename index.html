@@ -100,7 +100,6 @@
 
         <!-- Toggles Toolbar & Proxy Engine Selector -->
         <div class="flex items-center space-x-2 w-full md:w-auto justify-end text-xs text-gray-400">
-            <!-- Selector Engine Proxy (Opsi A) -->
             <select id="engineSelect" onchange="changeEngine()" class="bg-[#2a2a2a] border border-cfBorder text-xs text-white rounded px-2 py-1.5 focus:outline-none focus:border-cfOrange">
                 <option value="worker">Engine 1: Cloudflare Worker</option>
                 <option value="corsproxy">Engine 2: CORS Proxy Mirror</option>
@@ -140,7 +139,7 @@
                 </button>
             </div>
 
-            <div class="flex-1 relative bg-white" id="viewportContainer"></div>
+            <div class="flex-1 relative bg-[#121212]" id="viewportContainer"></div>
         </section>
     </main>
 
@@ -197,7 +196,7 @@
     <script>
         const WORKER_PROXY_URL = 'https://cp-proxy.wyvernwinter4.workers.dev';
 
-        let activeEngine = 'worker'; // Default: worker, corsproxy, allorigins
+        let activeEngine = 'worker';
         let isIncognito = false;
         let isDesktopUA = false;
         let isSaveData = false;
@@ -273,7 +272,9 @@
                 `;
             } else {
                 const iframe = document.createElement('iframe');
-                iframe.className = "w-full h-full border-none";
+                iframe.className = "w-full h-full border-none bg-white";
+                // Tambahkan izin sandbox penuh untuk membuka pemblokiran iframe di HP
+                iframe.setAttribute('sandbox', 'allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation');
                 iframe.src = currentTab.proxyUrl;
                 container.appendChild(iframe);
             }
@@ -302,7 +303,6 @@
             
             tab.rawUrl = rawUrl;
 
-            // Logika Multi-Engine Proxy Selector
             if (activeEngine === 'corsproxy') {
                 tab.proxyUrl = `https://corsproxy.io/?${encodeURIComponent(rawUrl)}`;
             } else if (activeEngine === 'allorigins') {
