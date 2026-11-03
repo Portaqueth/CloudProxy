@@ -61,22 +61,27 @@
                 <span class="font-bold text-lg text-white tracking-wide">CloudProxy Test</span>
             </div>
             <div class="flex items-center gap-2">
+                <button onclick="openBookmarkModal()" class="text-yellow-400 hover:text-yellow-300 p-1.5 rounded bg-[#2a2a2a] border border-cfBorder text-xs flex items-center gap-1">
+                    <i class="fa-solid fa-bookmark"></i> Bookmark
+                </button>
                 <button onclick="openHistoryModal()" class="text-gray-400 hover:text-white p-1.5 rounded bg-[#2a2a2a] border border-cfBorder text-xs flex items-center gap-1">
                     <i class="fa-solid fa-clock-rotate-left"></i> Histori
                 </button>
-                <div id="statusBadge" class="flex items-center space-x-2 bg-green-950 text-green-400 border border-green-800 text-xs px-2.5 py-1 rounded-full">
-                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                    <span id="statusText">Cloudflare Worker DoH Active</span>
-                </div>
             </div>
         </div>
 
         <!-- Address Bar -->
         <div class="w-full md:max-w-2xl flex items-center bg-[#2a2a2a] border border-cfBorder rounded-lg px-3 py-1.5 focus-within:border-cfOrange transition-all">
-            <i class="fa-solid fa-shield-halved text-green-400 text-sm mr-2.5" title="Worker Encrypted Proxy"></i>
+            <i class="fa-solid fa-shield-halved text-green-400 text-sm mr-2.5"></i>
             <input type="text" id="urlInput" placeholder="Ketik kata kunci atau URL (Tekan Enter)..." 
                    class="bg-transparent w-full text-sm text-white placeholder-gray-400 focus:outline-none">
-            <button onclick="handleSearch()" class="bg-cfOrange hover:bg-orange-600 text-white text-xs px-3 py-1.5 rounded ml-2 transition-all flex items-center gap-1 font-medium">
+            
+            <!-- Tombol Tambah Bookmark Cepat -->
+            <button onclick="addCurrentToBookmark()" title="Simpan Bookmark" class="text-gray-400 hover:text-yellow-400 px-2 text-sm transition-all">
+                <i class="fa-regular fa-star" id="bookmarkStarIcon"></i>
+            </button>
+
+            <button onclick="handleSearch()" class="bg-cfOrange hover:bg-orange-600 text-white text-xs px-3 py-1.5 rounded ml-1 transition-all flex items-center gap-1 font-medium">
                 <i class="fa-solid fa-magnifying-glass"></i> Cari
             </button>
         </div>
@@ -127,6 +132,28 @@
             <div class="flex-1 relative bg-white" id="viewportContainer"></div>
         </section>
     </main>
+
+    <!-- Modal Bookmark -->
+    <div id="bookmarkModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-cfCard border border-cfBorder w-full max-w-md rounded-xl p-4 text-xs shadow-2xl">
+            <div class="flex items-center justify-between border-b border-cfBorder pb-3 mb-3">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-bookmark text-yellow-400"></i> Bookmark Saya
+                </h3>
+                <button onclick="closeBookmarkModal()" class="text-gray-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+            
+            <div id="bookmarkList" class="max-h-60 overflow-y-auto space-y-1.5 my-2 pr-1"></div>
+
+            <div class="flex items-center justify-end pt-3 border-t border-cfBorder mt-3">
+                <button onclick="closeBookmarkModal()" class="bg-[#333] hover:bg-[#444] text-white px-3 py-1.5 rounded">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal Histori -->
     <div id="historyModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -196,6 +223,7 @@
             renderViewport();
             const currentTab = tabs.find(t => t.id === tabId);
             document.getElementById('urlInput').value = currentTab ? currentTab.rawUrl : '';
+            checkBookmarkStatus();
         }
 
         function closeTab(e, tabId) {
@@ -283,9 +311,96 @@
             try { tab.title = new URL(rawUrl).hostname; } catch(e) { tab.title = "Search"; }
             renderTabs();
             renderViewport();
+            checkBookmarkStatus();
             document.getElementById('pingVal').textContent = Math.floor(Math.random() * 8 + 8) + ' ms';
         }
 
+        // --- FITUR BOOKMARK ---
+        function getBookmarks() {
+            return JSON.parse(localStorage.getItem('cp_bookmarks') || '[]');
+        }
+
+        function checkBookmarkStatus() {
+            const currentTab = tabs.find(t => t.id === activeTabId);
+            const starIcon = document.getElementById('bookmarkStarIcon');
+            if (!currentTab || !currentTab.rawUrl) {
+                starIcon.className = "fa-regular fa-star";
+                return;
+            }
+            const bookmarks = getBookmarks();
+            const exists = bookmarks.some(b => b.url === currentTab.rawUrl);
+            if (exists) {
+                starIcon.className = "fa-solid fa-star text-yellow-400";
+            } else {
+                starIcon.className = "fa-regular fa-star text-gray-400";
+            }
+        }
+
+        function addCurrentToBookmark() {
+            const currentTab = tabs.find(t => t.id === activeTabId);
+            if (!currentTab || !currentTab.rawUrl) return;
+
+            let bookmarks = getBookmarks();
+            const index = bookmarks.findIndex(b => b.url === currentTab.rawUrl);
+
+            if (index >= 0) {
+                // Hapus jika sudah ada
+                bookmarks.splice(index, 1);
+            } else {
+                // Tambah baru
+                bookmarks.unshift({
+                    title: currentTab.title || currentTab.rawUrl,
+                    url: currentTab.rawUrl
+                });
+            }
+            localStorage.setItem('cp_bookmarks', JSON.stringify(bookmarks));
+            checkBookmarkStatus();
+        }
+
+        function openBookmarkModal() {
+            const bookmarkModal = document.getElementById('bookmarkModal');
+            const bookmarkList = document.getElementById('bookmarkList');
+            const bookmarks = getBookmarks();
+            bookmarkList.innerHTML = '';
+
+            if (bookmarks.length === 0) {
+                bookmarkList.innerHTML = '<div class="text-center text-gray-500 py-6">Belum ada bookmark yang disimpan.</div>';
+            } else {
+                bookmarks.forEach((item, idx) => {
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center justify-between p-2 rounded bg-[#222] hover:bg-[#2a2a2a] cursor-pointer text-xs';
+                    row.onclick = () => {
+                        closeBookmarkModal();
+                        document.getElementById('urlInput').value = item.url;
+                        handleSearch();
+                    };
+                    row.innerHTML = `
+                        <div class="truncate flex-1 mr-2">
+                            <div class="text-white font-medium truncate">${item.title}</div>
+                            <div class="text-gray-400 text-[10px] truncate">${item.url}</div>
+                        </div>
+                        <button onclick="deleteBookmark(event, ${idx})" class="text-gray-400 hover:text-red-400 p-1">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    `;
+                    bookmarkList.appendChild(row);
+                });
+            }
+            bookmarkModal.classList.remove('hidden');
+        }
+
+        function deleteBookmark(e, index) {
+            e.stopPropagation();
+            let bookmarks = getBookmarks();
+            bookmarks.splice(index, 1);
+            localStorage.setItem('cp_bookmarks', JSON.stringify(bookmarks));
+            openBookmarkModal();
+            checkBookmarkStatus();
+        }
+
+        function closeBookmarkModal() { document.getElementById('bookmarkModal').classList.add('hidden'); }
+
+        // --- FITUR HISTORI ---
         function getHistory() { return JSON.parse(localStorage.getItem('cp_browser_history') || '[]'); }
 
         function saveToHistory(query, url) {
