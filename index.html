@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CloudProxy Test Tool</title>
     
-    <!-- PWA & Meta Tags -->
+    <!-- PWA Meta -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1e1e1e">
     <meta name="mobile-web-app-capable" content="yes">
@@ -14,10 +14,12 @@
     <meta name="apple-mobile-web-app-title" content="CP Test">
     <link rel="apple-touch-icon" href="/icon.png">
 
-    <!-- Tailwind CSS CDN -->
+    <!-- Tailwind & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- JSZip & FileSaver CDN untuk Bulk Download ZIP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     
     <script>
         tailwind.config = {
@@ -37,57 +39,53 @@
     <style>
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .force-dark-iframe { filter: invert(0.9) hue-rotate(180deg) !important; }
     </style>
 </head>
 <body class="bg-cfDark text-gray-200 min-h-screen flex flex-col font-sans select-none">
 
-    <!-- Banner Prompt Install PWA -->
-    <div id="pwaInstallBanner" class="hidden bg-cfOrange text-white px-4 py-2 flex items-center justify-between text-xs shadow-lg z-50">
-        <div class="flex items-center gap-2">
-            <i class="fa-solid fa-download text-base"></i>
-            <span>Install aplikasi ini di HP Anda untuk akses lebih cepat!</span>
-        </div>
-        <div class="flex items-center gap-2">
-            <button onclick="installPWA()" class="bg-white text-cfOrange font-bold px-3 py-1 rounded shadow hover:bg-gray-100">Install</button>
-            <button onclick="dismissInstallBanner()" class="text-white hover:text-gray-200 px-1"><i class="fa-solid fa-xmark text-sm"></i></button>
-        </div>
-    </div>
-
-    <!-- Top Navigation Bar -->
+    <!-- Top Bar -->
     <header class="bg-cfCard border-b border-cfBorder p-3 flex flex-col md:flex-row items-center justify-between gap-3 sticky top-0 z-40">
         <div class="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-start">
             <div class="flex items-center space-x-2">
                 <i class="fa-solid fa-cloud text-cfOrange text-2xl"></i>
-                <span class="font-bold text-lg text-white tracking-wide">CloudProxy Test</span>
+                <span class="font-bold text-lg text-white tracking-wide">CloudProxy Pro</span>
             </div>
-            <div class="flex items-center gap-2">
-                <button onclick="openBookmarkModal()" class="text-yellow-400 hover:text-yellow-300 p-1.5 rounded bg-[#2a2a2a] border border-cfBorder text-xs flex items-center gap-1">
-                    <i class="fa-solid fa-bookmark"></i> Bookmark
+            <div class="flex items-center gap-1.5">
+                <button onclick="toggleIncognito()" id="incognitoBtn" title="Mode Incognito" class="p-1.5 rounded bg-[#2a2a2a] border border-cfBorder text-xs text-gray-400 hover:text-white">
+                    <i class="fa-solid fa-user-secret"></i>
+                </button>
+                <button onclick="openBookmarkModal()" class="text-yellow-400 p-1.5 rounded bg-[#2a2a2a] border border-cfBorder text-xs flex items-center gap-1">
+                    <i class="fa-solid fa-bookmark"></i>
                 </button>
                 <button onclick="openHistoryModal()" class="text-gray-400 hover:text-white p-1.5 rounded bg-[#2a2a2a] border border-cfBorder text-xs flex items-center gap-1">
-                    <i class="fa-solid fa-clock-rotate-left"></i> Histori
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </button>
+                <button onclick="openBulkDownloadModal()" title="Bulk Downloader" class="text-green-400 p-1.5 rounded bg-[#2a2a2a] border border-cfBorder text-xs flex items-center gap-1">
+                    <i class="fa-solid fa-layer-group"></i> Bulk Download
                 </button>
             </div>
         </div>
 
-        <!-- Address Bar -->
-        <div class="w-full md:max-w-2xl flex items-center bg-[#2a2a2a] border border-cfBorder rounded-lg px-3 py-1.5 focus-within:border-cfOrange transition-all">
-            <i class="fa-solid fa-shield-halved text-green-400 text-sm mr-2.5"></i>
-            <input type="text" id="urlInput" placeholder="Ketik kata kunci atau URL (Tekan Enter)..." 
-                   class="bg-transparent w-full text-sm text-white placeholder-gray-400 focus:outline-none">
+        <!-- Address Bar & Navigation Controls -->
+        <div class="w-full md:max-w-2xl flex items-center gap-1.5 bg-[#2a2a2a] border border-cfBorder rounded-lg px-2 py-1.5 focus-within:border-cfOrange transition-all">
+            <!-- Tombol Navigasi -->
+            <button onclick="navReload()" title="Reload" class="text-gray-400 hover:text-white px-1 text-xs"><i class="fa-solid fa-rotate-right"></i></button>
             
-            <!-- Tombol Tambah Bookmark Cepat -->
-            <button onclick="addCurrentToBookmark()" title="Simpan Bookmark" class="text-gray-400 hover:text-yellow-400 px-2 text-sm transition-all">
-                <i class="fa-regular fa-star" id="bookmarkStarIcon"></i>
-            </button>
-
-            <button onclick="handleSearch()" class="bg-cfOrange hover:bg-orange-600 text-white text-xs px-3 py-1.5 rounded ml-1 transition-all flex items-center gap-1 font-medium">
-                <i class="fa-solid fa-magnifying-glass"></i> Cari
-            </button>
+            <input type="text" id="urlInput" placeholder="Ketik kata kunci atau URL (Tekan Enter)..." 
+                   class="bg-transparent w-full text-sm text-white placeholder-gray-400 focus:outline-none px-1">
+            
+            <button onclick="addCurrentToBookmark()" title="Bookmark" class="text-gray-400 hover:text-yellow-400 px-1 text-sm"><i class="fa-regular fa-star" id="bookmarkStarIcon"></i></button>
+            <button onclick="downloadCurrentPage()" title="Download URL Ini" class="text-gray-400 hover:text-green-400 px-1 text-xs"><i class="fa-solid fa-download"></i></button>
+            <button onclick="handleSearch()" class="bg-cfOrange hover:bg-orange-600 text-white text-xs px-3 py-1 rounded font-medium">Cari</button>
         </div>
 
+        <!-- Toggles Toolbar -->
         <div class="flex items-center space-x-2 w-full md:w-auto justify-end text-xs text-gray-400">
-            <span>DNS Engine: <strong class="text-white">1.1.1.1 WARP Worker</strong></span>
+            <button onclick="toggleDarkMode()" id="darkModeToggle" title="Force Dark Mode Web" class="p-1.5 rounded bg-[#2a2a2a] border border-cfBorder hover:text-white"><i class="fa-solid fa-moon"></i></button>
+            <button onclick="toggleSaveData()" id="saveDataToggle" title="Mode Hemat Data (Matikan Gambar)" class="p-1.5 rounded bg-[#2a2a2a] border border-cfBorder hover:text-white"><i class="fa-solid fa-image"></i></button>
+            <button onclick="toggleUserAgent()" id="uaToggle" title="Switch Desktop/Mobile View" class="p-1.5 rounded bg-[#2a2a2a] border border-cfBorder hover:text-white"><i class="fa-solid fa-desktop"></i></button>
+            <button onclick="quickWipeData()" title="Hapus Semua Data/Cache" class="p-1.5 rounded bg-red-950/60 text-red-400 border border-red-800 hover:bg-red-900"><i class="fa-solid fa-trash-can"></i></button>
         </div>
     </header>
 
@@ -100,27 +98,16 @@
                     <i class="fa-solid fa-microchip text-cfOrange"></i> System Diagnostics
                 </h3>
                 <div class="space-y-1.5">
-                    <div class="flex justify-between">
-                        <span class="text-gray-400">Proxy Mode:</span>
-                        <span class="text-green-400 font-medium">Full Dynamic Rewriter</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-400">Asset Engine:</span>
-                        <span class="text-green-400 font-medium">DOM & CSS Mirroring</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-400">AdBlocker:</span>
-                        <span class="text-green-400 font-medium">Active Filter</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-400">Latency:</span>
-                        <span id="pingVal" class="text-green-400 font-mono">11 ms</span>
-                    </div>
+                    <div class="flex justify-between"><span class="text-gray-400">Mode:</span><span id="incognitoStatus" class="text-green-400">Normal</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">View Protocol:</span><span id="uaStatus" class="text-white">Mobile View</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">Save Data:</span><span id="saveDataStatus" class="text-gray-400">Off</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">Web Dark Mode:</span><span id="darkStatus" class="text-gray-400">Off</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">Latency:</span><span id="pingVal" class="text-green-400 font-mono">11 ms</span></div>
                 </div>
             </div>
         </aside>
 
-        <!-- Tab Bar & Viewport Container -->
+        <!-- Viewport & Tab Container -->
         <section class="flex-1 bg-cfCard border border-cfBorder rounded-xl overflow-hidden flex flex-col min-h-[480px]">
             <div class="bg-[#181818] border-b border-cfBorder px-2 pt-2 flex items-center justify-between">
                 <div id="tabList" class="flex items-center gap-1 overflow-x-auto no-scrollbar"></div>
@@ -133,79 +120,63 @@
         </section>
     </main>
 
-    <!-- Modal Bookmark -->
+    <!-- Modal Bulk Downloader -->
+    <div id="bulkModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-cfCard border border-cfBorder w-full max-w-lg rounded-xl p-4 text-xs shadow-2xl">
+            <div class="flex items-center justify-between border-b border-cfBorder pb-3 mb-3">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group text-green-400"></i> Bulk Downloader (Unduh Banyak File ZIP)
+                </h3>
+                <button onclick="closeBulkModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-base"></i></button>
+            </div>
+            <p class="text-gray-400 mb-2">Masukkan baris URL file/gambar yang ingin diunduh sekaligus (1 URL per baris):</p>
+            <textarea id="bulkUrls" rows="5" class="w-full bg-[#121212] border border-cfBorder rounded p-2 text-white font-mono focus:outline-none focus:border-cfOrange mb-3" placeholder="https://example.com/file1.jpg&#10;https://example.com/file2.pdf"></textarea>
+
+            <div id="bulkProgress" class="hidden mb-3 text-green-400 font-mono text-center">Menyiapkan Paket ZIP...</div>
+
+            <div class="flex items-center justify-between pt-2 border-t border-cfBorder">
+                <button onclick="startBulkDownload()" class="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded flex items-center gap-1">
+                    <i class="fa-solid fa-file-zipper"></i> Unduh Semua Sebagai ZIP
+                </button>
+                <button onclick="closeBulkModal()" class="bg-[#333] hover:bg-[#444] text-white px-3 py-1.5 rounded">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Bookmark & Histori -->
     <div id="bookmarkModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-cfCard border border-cfBorder w-full max-w-md rounded-xl p-4 text-xs shadow-2xl">
             <div class="flex items-center justify-between border-b border-cfBorder pb-3 mb-3">
-                <h3 class="font-bold text-white text-sm flex items-center gap-2">
-                    <i class="fa-solid fa-bookmark text-yellow-400"></i> Bookmark Saya
-                </h3>
-                <button onclick="closeBookmarkModal()" class="text-gray-400 hover:text-white">
-                    <i class="fa-solid fa-xmark text-base"></i>
-                </button>
+                <h3 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-bookmark text-yellow-400"></i> Bookmark</h3>
+                <button onclick="closeBookmarkModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            
-            <div id="bookmarkList" class="max-h-60 overflow-y-auto space-y-1.5 my-2 pr-1"></div>
-
-            <div class="flex items-center justify-end pt-3 border-t border-cfBorder mt-3">
-                <button onclick="closeBookmarkModal()" class="bg-[#333] hover:bg-[#444] text-white px-3 py-1.5 rounded">
-                    Tutup
-                </button>
-            </div>
+            <div id="bookmarkList" class="max-h-60 overflow-y-auto space-y-1.5 my-2"></div>
+            <div class="flex justify-end pt-2 border-t border-cfBorder"><button onclick="closeBookmarkModal()" class="bg-[#333] text-white px-3 py-1.5 rounded">Tutup</button></div>
         </div>
     </div>
 
-    <!-- Modal Histori -->
     <div id="historyModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-cfCard border border-cfBorder w-full max-w-md rounded-xl p-4 text-xs shadow-2xl">
             <div class="flex items-center justify-between border-b border-cfBorder pb-3 mb-3">
-                <h3 class="font-bold text-white text-sm flex items-center gap-2">
-                    <i class="fa-solid fa-clock-rotate-left text-cfOrange"></i> Histori Pencarian
-                </h3>
-                <button onclick="closeHistoryModal()" class="text-gray-400 hover:text-white">
-                    <i class="fa-solid fa-xmark text-base"></i>
-                </button>
+                <h3 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-cfOrange"></i> Histori</h3>
+                <button onclick="closeHistoryModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            
-            <div id="historyList" class="max-h-60 overflow-y-auto space-y-1.5 my-2 pr-1"></div>
-
-            <div class="flex items-center justify-between pt-3 border-t border-cfBorder mt-3">
-                <button onclick="clearHistory()" class="bg-red-900/40 hover:bg-red-800/60 text-red-300 border border-red-700/50 px-3 py-1.5 rounded transition-all flex items-center gap-1">
-                    <i class="fa-solid fa-trash-can"></i> Hapus Histori
-                </button>
-                <button onclick="closeHistoryModal()" class="bg-[#333] hover:bg-[#444] text-white px-3 py-1.5 rounded">
-                    Tutup
-                </button>
+            <div id="historyList" class="max-h-60 overflow-y-auto space-y-1.5 my-2"></div>
+            <div class="flex justify-between pt-2 border-t border-cfBorder">
+                <button onclick="clearHistory()" class="bg-red-900/40 text-red-300 border border-red-700/50 px-3 py-1 rounded">Hapus Histori</button>
+                <button onclick="closeHistoryModal()" class="bg-[#333] text-white px-3 py-1.5 rounded">Tutup</button>
             </div>
         </div>
     </div>
 
-    <!-- JavaScript Application Engine -->
+    <!-- JS Logic Engine -->
     <script>
         const WORKER_PROXY_URL = 'https://cp-proxy.wyvernwinter4.workers.dev';
 
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').catch(err => console.log(err));
-            });
-        }
-
-        let deferredPrompt;
-        const pwaInstallBanner = document.getElementById('pwaInstallBanner');
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            pwaInstallBanner.classList.remove('hidden');
-        });
-
-        function installPWA() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then(() => { pwaInstallBanner.classList.add('hidden'); deferredPrompt = null; });
-            }
-        }
-        function dismissInstallBanner() { pwaInstallBanner.classList.add('hidden'); }
+        let isIncognito = false;
+        let isDesktopUA = false;
+        let isSaveData = false;
+        let isForceDark = false;
 
         let tabs = [];
         let activeTabId = null;
@@ -229,9 +200,7 @@
         function closeTab(e, tabId) {
             e.stopPropagation();
             if (tabs.length === 1) {
-                tabs[0].rawUrl = '';
-                tabs[0].proxyUrl = '';
-                tabs[0].title = 'Tab Baru';
+                tabs[0].rawUrl = ''; tabs[0].proxyUrl = ''; tabs[0].title = 'Tab Baru';
                 switchTab(tabs[0].id);
                 return;
             }
@@ -251,10 +220,7 @@
                     isActive ? 'bg-cfCard border-cfOrange text-white font-medium' : 'bg-[#222] border-transparent text-gray-400'
                 }`;
                 tabEl.onclick = () => switchTab(tab.id);
-                tabEl.innerHTML = `
-                    <span class="truncate flex-1">${tab.title}</span>
-                    <i onclick="closeTab(event, '${tab.id}')" class="fa-solid fa-xmark hover:text-red-400 p-0.5 text-[10px]"></i>
-                `;
+                tabEl.innerHTML = `<span class="truncate flex-1">${tab.title}</span><i onclick="closeTab(event, '${tab.id}')" class="fa-solid fa-xmark hover:text-red-400 p-0.5 text-[10px]"></i>`;
                 tabList.appendChild(tabEl);
             });
         }
@@ -266,21 +232,33 @@
             if (!currentTab) return;
 
             if (!currentTab.proxyUrl) {
+                // Tampilan Speed Dial Halaman Utama
                 container.innerHTML = `
                     <div class="absolute inset-0 bg-[#141414] text-white flex flex-col items-center justify-center p-6 text-center z-10">
                         <div class="w-12 h-12 bg-cfOrange/10 border border-cfOrange/30 rounded-full flex items-center justify-center mb-3">
                             <i class="fa-solid fa-shield-halved text-cfOrange text-xl"></i>
                         </div>
-                        <h2 class="text-lg font-bold mb-1">CloudProxy Test Gateway</h2>
-                        <p class="text-gray-400 text-xs max-w-xs mb-4">Pencarian & web proxy aman dengan fitur AdBlock otomatis.</p>
+                        <h2 class="text-lg font-bold mb-1">CloudProxy Speed Dial</h2>
+                        <p class="text-gray-400 text-xs max-w-xs mb-4">Akses cepat situs favorit dengan enkripsi otomatis.</p>
+                        <div class="grid grid-cols-2 gap-2 max-w-xs w-full">
+                            <button onclick="handleQuickNav('https://duckduckgo.com')" class="bg-[#2a2a2a] hover:bg-[#333] border border-cfBorder p-2 rounded text-xs text-gray-300 flex items-center gap-2 justify-center"><i class="fa-solid fa-magnifying-glass text-cfOrange"></i> DuckDuckGo</button>
+                            <button onclick="handleQuickNav('https://wikipedia.org')" class="bg-[#2a2a2a] hover:bg-[#333] border border-cfBorder p-2 rounded text-xs text-gray-300 flex items-center gap-2 justify-center"><i class="fa-solid fa-book text-blue-400"></i> Wikipedia</button>
+                            <button onclick="handleQuickNav('https://github.com')" class="bg-[#2a2a2a] hover:bg-[#333] border border-cfBorder p-2 rounded text-xs text-gray-300 flex items-center gap-2 justify-center"><i class="fa-brands fa-github text-white"></i> GitHub</button>
+                            <button onclick="handleQuickNav('https://reddit.com')" class="bg-[#2a2a2a] hover:bg-[#333] border border-cfBorder p-2 rounded text-xs text-gray-300 flex items-center gap-2 justify-center"><i class="fa-brands fa-reddit text-orange-500"></i> Reddit</button>
+                        </div>
                     </div>
                 `;
             } else {
                 const iframe = document.createElement('iframe');
-                iframe.className = "w-full h-full border-none";
+                iframe.className = `w-full h-full border-none ${isForceDark ? 'force-dark-iframe' : ''}`;
                 iframe.src = currentTab.proxyUrl;
                 container.appendChild(iframe);
             }
+        }
+
+        function handleQuickNav(url) {
+            document.getElementById('urlInput').value = url;
+            handleSearch();
         }
 
         function handleSearch() {
@@ -288,17 +266,11 @@
             const query = input.value.trim();
             if (!query) return;
 
-            let targetUrl = '';
-            if (query.startsWith('http://') || query.startsWith('https://')) {
-                targetUrl = query;
-            } else if (query.includes('.') && !query.includes(' ')) {
-                targetUrl = 'https://' + query;
-            } else {
-                targetUrl = 'https://duckduckgo.com/?q=' + encodeURIComponent(query);
-            }
+            let targetUrl = query.startsWith('http://') || query.startsWith('https://') 
+                ? query : (query.includes('.') && !query.includes(' ') ? 'https://' + query : 'https://duckduckgo.com/?q=' + encodeURIComponent(query));
 
             navigateTab(activeTabId, targetUrl);
-            saveToHistory(query, targetUrl);
+            if (!isIncognito) saveToHistory(query, targetUrl);
         }
 
         function navigateTab(tabId, rawUrl) {
@@ -306,148 +278,168 @@
             if (!tab) return;
             
             tab.rawUrl = rawUrl;
-            tab.proxyUrl = WORKER_PROXY_URL + '?url=' + encodeURIComponent(rawUrl);
+            tab.proxyUrl = `${WORKER_PROXY_URL}?url=${encodeURIComponent(rawUrl)}&saveData=${isSaveData}&desktop=${isDesktopUA}`;
 
             try { tab.title = new URL(rawUrl).hostname; } catch(e) { tab.title = "Search"; }
             renderTabs();
             renderViewport();
             checkBookmarkStatus();
-            document.getElementById('pingVal').textContent = Math.floor(Math.random() * 8 + 8) + ' ms';
         }
 
-        // --- FITUR BOOKMARK ---
-        function getBookmarks() {
-            return JSON.parse(localStorage.getItem('cp_bookmarks') || '[]');
+        function navReload() {
+            const currentTab = tabs.find(t => t.id === activeTabId);
+            if (currentTab && currentTab.rawUrl) navigateTab(activeTabId, currentTab.rawUrl);
         }
 
+        // --- TOGGLE FEATURES ---
+        function toggleIncognito() {
+            isIncognito = !isIncognito;
+            document.getElementById('incognitoStatus').textContent = isIncognito ? 'Incognito' : 'Normal';
+            document.getElementById('incognitoBtn').className = `p-1.5 rounded border border-cfBorder text-xs ${isIncognito ? 'bg-purple-900 text-purple-300 border-purple-600' : 'bg-[#2a2a2a] text-gray-400'}`;
+        }
+        function toggleUserAgent() {
+            isDesktopUA = !isDesktopUA;
+            document.getElementById('uaStatus').textContent = isDesktopUA ? 'Desktop View' : 'Mobile View';
+            document.getElementById('uaToggle').className = `p-1.5 rounded border border-cfBorder ${isDesktopUA ? 'bg-blue-900 text-blue-300 border-blue-600' : 'bg-[#2a2a2a] text-gray-400'}`;
+            navReload();
+        }
+        function toggleSaveData() {
+            isSaveData = !isSaveData;
+            document.getElementById('saveDataStatus').textContent = isSaveData ? 'On (No Img)' : 'Off';
+            document.getElementById('saveDataToggle').className = `p-1.5 rounded border border-cfBorder ${isSaveData ? 'bg-green-900 text-green-300 border-green-600' : 'bg-[#2a2a2a] text-gray-400'}`;
+            navReload();
+        }
+        function toggleDarkMode() {
+            isForceDark = !isForceDark;
+            document.getElementById('darkStatus').textContent = isForceDark ? 'Force On' : 'Off';
+            document.getElementById('darkModeToggle').className = `p-1.5 rounded border border-cfBorder ${isForceDark ? 'bg-yellow-900 text-yellow-300 border-yellow-600' : 'bg-[#2a2a2a] text-gray-400'}`;
+            renderViewport();
+        }
+
+        function quickWipeData() {
+            if (confirm('Hapus seluruh histori pencarian, bookmark, dan cache aplikasi?')) {
+                localStorage.clear();
+                alert('Seluruh data berhasil dibersihkan.');
+                location.reload();
+            }
+        }
+
+        // --- DOWNLOAD & BULK DOWNLOAD ENGINE ---
+        function downloadCurrentPage() {
+            const currentTab = tabs.find(t => t.id === activeTabId);
+            if (!currentTab || !currentTab.rawUrl) return;
+            window.open(currentTab.proxyUrl, '_blank');
+        }
+
+        function openBulkDownloadModal() { document.getElementById('bulkModal').classList.remove('hidden'); }
+        function closeBulkModal() { document.getElementById('bulkModal').classList.add('hidden'); }
+
+        async function startBulkDownload() {
+            const textarea = document.getElementById('bulkUrls');
+            const urls = textarea.value.split('\n').map(u => u.trim()).filter(u => u.length > 0);
+            if (urls.length === 0) return alert('Masukkan setidaknya satu URL.');
+
+            const progress = document.getElementById('bulkProgress');
+            progress.classList.remove('hidden');
+            progress.textContent = `Memproses 0 / ${urls.length} file...`;
+
+            const zip = new JSZip();
+            let completed = 0;
+
+            for (let i = 0; i < urls.length; i++) {
+                try {
+                    const proxyUrl = `${WORKER_PROXY_URL}?url=${encodeURIComponent(urls[i])}`;
+                    const res = await fetch(proxyUrl);
+                    const blob = await res.blob();
+                    
+                    let filename = `file_${i + 1}`;
+                    try { filename = urls[i].split('/').pop() || filename; } catch(e){}
+
+                    zip.file(filename, blob);
+                } catch(e) {
+                    console.log('Gagal download file:', urls[i]);
+                }
+                completed++;
+                progress.textContent = `Memproses ${completed} / ${urls.length} file...`;
+            }
+
+            progress.textContent = 'Mengompres ke format ZIP...';
+            zip.generateAsync({ type: 'blob' }).then(function(content) {
+                saveAs(content, `CloudProxy_Bulk_${Date.now()}.zip`);
+                progress.classList.add('hidden');
+                closeBulkModal();
+            });
+        }
+
+        // --- BOOKMARK & HISTORI ENGINE ---
+        function getBookmarks() { return JSON.parse(localStorage.getItem('cp_bookmarks') || '[]'); }
         function checkBookmarkStatus() {
             const currentTab = tabs.find(t => t.id === activeTabId);
             const starIcon = document.getElementById('bookmarkStarIcon');
-            if (!currentTab || !currentTab.rawUrl) {
-                starIcon.className = "fa-regular fa-star";
-                return;
-            }
-            const bookmarks = getBookmarks();
-            const exists = bookmarks.some(b => b.url === currentTab.rawUrl);
-            if (exists) {
-                starIcon.className = "fa-solid fa-star text-yellow-400";
-            } else {
-                starIcon.className = "fa-regular fa-star text-gray-400";
-            }
+            if (!currentTab || !currentTab.rawUrl) return starIcon.className = "fa-regular fa-star text-gray-400";
+            const exists = getBookmarks().some(b => b.url === currentTab.rawUrl);
+            starIcon.className = exists ? "fa-solid fa-star text-yellow-400" : "fa-regular fa-star text-gray-400";
         }
-
         function addCurrentToBookmark() {
             const currentTab = tabs.find(t => t.id === activeTabId);
             if (!currentTab || !currentTab.rawUrl) return;
-
-            let bookmarks = getBookmarks();
-            const index = bookmarks.findIndex(b => b.url === currentTab.rawUrl);
-
-            if (index >= 0) {
-                // Hapus jika sudah ada
-                bookmarks.splice(index, 1);
-            } else {
-                // Tambah baru
-                bookmarks.unshift({
-                    title: currentTab.title || currentTab.rawUrl,
-                    url: currentTab.rawUrl
-                });
-            }
-            localStorage.setItem('cp_bookmarks', JSON.stringify(bookmarks));
+            let bks = getBookmarks();
+            const idx = bks.findIndex(b => b.url === currentTab.rawUrl);
+            if (idx >= 0) bks.splice(idx, 1);
+            else bks.unshift({ title: currentTab.title || currentTab.rawUrl, url: currentTab.rawUrl });
+            localStorage.setItem('cp_bookmarks', JSON.stringify(bks));
             checkBookmarkStatus();
         }
 
         function openBookmarkModal() {
-            const bookmarkModal = document.getElementById('bookmarkModal');
-            const bookmarkList = document.getElementById('bookmarkList');
-            const bookmarks = getBookmarks();
-            bookmarkList.innerHTML = '';
-
-            if (bookmarks.length === 0) {
-                bookmarkList.innerHTML = '<div class="text-center text-gray-500 py-6">Belum ada bookmark yang disimpan.</div>';
-            } else {
-                bookmarks.forEach((item, idx) => {
-                    const row = document.createElement('div');
-                    row.className = 'flex items-center justify-between p-2 rounded bg-[#222] hover:bg-[#2a2a2a] cursor-pointer text-xs';
-                    row.onclick = () => {
-                        closeBookmarkModal();
-                        document.getElementById('urlInput').value = item.url;
-                        handleSearch();
-                    };
-                    row.innerHTML = `
-                        <div class="truncate flex-1 mr-2">
-                            <div class="text-white font-medium truncate">${item.title}</div>
-                            <div class="text-gray-400 text-[10px] truncate">${item.url}</div>
-                        </div>
-                        <button onclick="deleteBookmark(event, ${idx})" class="text-gray-400 hover:text-red-400 p-1">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
-                    `;
-                    bookmarkList.appendChild(row);
-                });
-            }
-            bookmarkModal.classList.remove('hidden');
+            const modal = document.getElementById('bookmarkModal');
+            const list = document.getElementById('bookmarkList');
+            const bks = getBookmarks();
+            list.innerHTML = bks.length === 0 ? '<div class="text-center text-gray-500 py-4">Belum ada bookmark.</div>' : '';
+            bks.forEach((item, idx) => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between p-2 rounded bg-[#222] hover:bg-[#2a2a2a] cursor-pointer';
+                row.onclick = () => { closeBookmarkModal(); document.getElementById('urlInput').value = item.url; handleSearch(); };
+                row.innerHTML = `<div class="truncate flex-1 mr-2"><div class="text-white font-medium truncate">${item.title}</div><div class="text-gray-400 text-[10px] truncate">${item.url}</div></div><button onclick="deleteBookmark(event, ${idx})" class="text-gray-400 hover:text-red-400 p-1"><i class="fa-solid fa-trash-can"></i></button>`;
+                list.appendChild(row);
+            });
+            modal.classList.remove('hidden');
         }
-
         function deleteBookmark(e, index) {
             e.stopPropagation();
-            let bookmarks = getBookmarks();
-            bookmarks.splice(index, 1);
-            localStorage.setItem('cp_bookmarks', JSON.stringify(bookmarks));
-            openBookmarkModal();
-            checkBookmarkStatus();
+            let bks = getBookmarks(); bks.splice(index, 1);
+            localStorage.setItem('cp_bookmarks', JSON.stringify(bks));
+            openBookmarkModal(); checkBookmarkStatus();
         }
-
         function closeBookmarkModal() { document.getElementById('bookmarkModal').classList.add('hidden'); }
 
-        // --- FITUR HISTORI ---
         function getHistory() { return JSON.parse(localStorage.getItem('cp_browser_history') || '[]'); }
-
         function saveToHistory(query, url) {
-            let history = getHistory();
-            history.unshift({ id: Date.now(), query, url, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
-            if (history.length > 50) history.pop();
-            localStorage.setItem('cp_browser_history', JSON.stringify(history));
+            let h = getHistory();
+            h.unshift({ id: Date.now(), query, url, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+            if (h.length > 50) h.pop();
+            localStorage.setItem('cp_browser_history', JSON.stringify(h));
         }
-
         function openHistoryModal() {
-            const historyModal = document.getElementById('historyModal');
-            const historyList = document.getElementById('historyList');
-            const history = getHistory();
-            historyList.innerHTML = '';
-            if (history.length === 0) {
-                historyList.innerHTML = '<div class="text-center text-gray-500 py-6">Belum ada histori.</div>';
-            } else {
-                history.forEach(item => {
-                    const row = document.createElement('div');
-                    row.className = 'flex items-center justify-between p-2 rounded bg-[#222] hover:bg-[#2a2a2a] cursor-pointer text-xs';
-                    row.onclick = () => { closeHistoryModal(); document.getElementById('urlInput').value = item.url; handleSearch(); };
-                    row.innerHTML = `
-                        <div class="truncate flex-1 mr-2">
-                            <div class="text-white font-medium truncate">${item.query}</div>
-                            <div class="text-gray-400 text-[10px] truncate">${item.url}</div>
-                        </div>
-                        <span class="text-gray-500 text-[10px]">${item.time}</span>
-                    `;
-                    historyList.appendChild(row);
-                });
-            }
-            historyModal.classList.remove('hidden');
-        }
-
-        function closeHistoryModal() { document.getElementById('historyModal').classList.add('hidden'); }
-        function clearHistory() {
-            if (confirm('Hapus seluruh histori?')) {
-                localStorage.removeItem('cp_browser_history');
-                openHistoryModal();
-            }
-        }
-
-        window.addEventListener('DOMContentLoaded', () => { 
-            addNewTab(); 
-            document.getElementById('urlInput').addEventListener('keyup', function (e) {
-                if (e.key === 'Enter') handleSearch();
+            const modal = document.getElementById('historyModal');
+            const list = document.getElementById('historyList');
+            const h = getHistory();
+            list.innerHTML = h.length === 0 ? '<div class="text-center text-gray-500 py-4">Belum ada histori.</div>' : '';
+            h.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between p-2 rounded bg-[#222] hover:bg-[#2a2a2a] cursor-pointer';
+                row.onclick = () => { closeHistoryModal(); document.getElementById('urlInput').value = item.url; handleSearch(); };
+                row.innerHTML = `<div class="truncate flex-1 mr-2"><div class="text-white font-medium truncate">${item.query}</div><div class="text-gray-400 text-[10px] truncate">${item.url}</div></div><span class="text-gray-500 text-[10px]">${item.time}</span>`;
+                list.appendChild(row);
             });
+            modal.classList.remove('hidden');
+        }
+        function closeHistoryModal() { document.getElementById('historyModal').classList.add('hidden'); }
+        function clearHistory() { if (confirm('Hapus seluruh histori?')) { localStorage.removeItem('cp_browser_history'); openHistoryModal(); } }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            addNewTab();
+            document.getElementById('urlInput').addEventListener('keyup', function (e) { if (e.key === 'Enter') handleSearch(); });
         });
     </script>
 </body>
