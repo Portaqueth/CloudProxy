@@ -5,19 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CloudProxy Test Tool</title>
     
-    <!-- PWA Meta -->
+    <!-- PWA & Meta Tags Penyamaran Native App -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1e1e1e">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="CP Test">
+    <meta name="application-name" content="CloudProxy Test">
     <link rel="apple-touch-icon" href="/icon.png">
 
-    <!-- Tailwind & FontAwesome -->
+    <!-- Tailwind & FontAwesome CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- JSZip & FileSaver CDN untuk Bulk Download ZIP -->
+    <!-- JSZip & FileSaver CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     
@@ -39,12 +40,30 @@
     <style>
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .force-dark-iframe { filter: invert(0.9) hue-rotate(180deg) !important; }
+
+        /* Style Penyamaran Native Application */
+        * {
+            -webkit-tap-highlight-color: transparent !important;
+            -webkit-touch-callout: none !important;
+        }
+        body {
+            -webkit-user-select: none;
+            user-select: none;
+            overscroll-behavior-y: contain;
+        }
+        img {
+            -webkit-user-drag: none;
+            user-drag: none;
+        }
+        input, textarea, select {
+            -webkit-user-select: auto !important;
+            user-select: auto !important;
+        }
     </style>
 </head>
 <body class="bg-cfDark text-gray-200 min-h-screen flex flex-col font-sans select-none">
 
-    <!-- Top Bar -->
+    <!-- Top Bar Navigation -->
     <header class="bg-cfCard border-b border-cfBorder p-3 flex flex-col md:flex-row items-center justify-between gap-3 sticky top-0 z-40">
         <div class="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-start">
             <div class="flex items-center space-x-2">
@@ -67,9 +86,8 @@
             </div>
         </div>
 
-        <!-- Address Bar & Navigation Controls -->
+        <!-- Address Bar & Controls -->
         <div class="w-full md:max-w-2xl flex items-center gap-1.5 bg-[#2a2a2a] border border-cfBorder rounded-lg px-2 py-1.5 focus-within:border-cfOrange transition-all">
-            <!-- Tombol Navigasi -->
             <button onclick="navReload()" title="Reload" class="text-gray-400 hover:text-white px-1 text-xs"><i class="fa-solid fa-rotate-right"></i></button>
             
             <input type="text" id="urlInput" placeholder="Ketik kata kunci atau URL (Tekan Enter)..." 
@@ -80,9 +98,15 @@
             <button onclick="handleSearch()" class="bg-cfOrange hover:bg-orange-600 text-white text-xs px-3 py-1 rounded font-medium">Cari</button>
         </div>
 
-        <!-- Toggles Toolbar -->
+        <!-- Toggles Toolbar & Proxy Engine Selector -->
         <div class="flex items-center space-x-2 w-full md:w-auto justify-end text-xs text-gray-400">
-            <button onclick="toggleDarkMode()" id="darkModeToggle" title="Force Dark Mode Web" class="p-1.5 rounded bg-[#2a2a2a] border border-cfBorder hover:text-white"><i class="fa-solid fa-moon"></i></button>
+            <!-- Selector Engine Proxy (Opsi A) -->
+            <select id="engineSelect" onchange="changeEngine()" class="bg-[#2a2a2a] border border-cfBorder text-xs text-white rounded px-2 py-1.5 focus:outline-none focus:border-cfOrange">
+                <option value="worker">Engine 1: Cloudflare Worker</option>
+                <option value="corsproxy">Engine 2: CORS Proxy Mirror</option>
+                <option value="allorigins">Engine 3: AllOrigins Tunnel</option>
+            </select>
+            
             <button onclick="toggleSaveData()" id="saveDataToggle" title="Mode Hemat Data (Matikan Gambar)" class="p-1.5 rounded bg-[#2a2a2a] border border-cfBorder hover:text-white"><i class="fa-solid fa-image"></i></button>
             <button onclick="toggleUserAgent()" id="uaToggle" title="Switch Desktop/Mobile View" class="p-1.5 rounded bg-[#2a2a2a] border border-cfBorder hover:text-white"><i class="fa-solid fa-desktop"></i></button>
             <button onclick="quickWipeData()" title="Hapus Semua Data/Cache" class="p-1.5 rounded bg-red-950/60 text-red-400 border border-red-800 hover:bg-red-900"><i class="fa-solid fa-trash-can"></i></button>
@@ -99,9 +123,9 @@
                 </h3>
                 <div class="space-y-1.5">
                     <div class="flex justify-between"><span class="text-gray-400">Mode:</span><span id="incognitoStatus" class="text-green-400">Normal</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">Active Engine:</span><span id="activeEngineText" class="text-cfOrange font-medium">Worker (Default)</span></div>
                     <div class="flex justify-between"><span class="text-gray-400">View Protocol:</span><span id="uaStatus" class="text-white">Mobile View</span></div>
                     <div class="flex justify-between"><span class="text-gray-400">Save Data:</span><span id="saveDataStatus" class="text-gray-400">Off</span></div>
-                    <div class="flex justify-between"><span class="text-gray-400">Web Dark Mode:</span><span id="darkStatus" class="text-gray-400">Off</span></div>
                     <div class="flex justify-between"><span class="text-gray-400">Latency:</span><span id="pingVal" class="text-green-400 font-mono">11 ms</span></div>
                 </div>
             </div>
@@ -169,14 +193,14 @@
         </div>
     </div>
 
-    <!-- JS Logic Engine -->
+    <!-- JS Engine -->
     <script>
         const WORKER_PROXY_URL = 'https://cp-proxy.wyvernwinter4.workers.dev';
 
+        let activeEngine = 'worker'; // Default: worker, corsproxy, allorigins
         let isIncognito = false;
         let isDesktopUA = false;
         let isSaveData = false;
-        let isForceDark = false;
 
         let tabs = [];
         let activeTabId = null;
@@ -232,7 +256,6 @@
             if (!currentTab) return;
 
             if (!currentTab.proxyUrl) {
-                // Tampilan Speed Dial Halaman Utama
                 container.innerHTML = `
                     <div class="absolute inset-0 bg-[#141414] text-white flex flex-col items-center justify-center p-6 text-center z-10">
                         <div class="w-12 h-12 bg-cfOrange/10 border border-cfOrange/30 rounded-full flex items-center justify-center mb-3">
@@ -250,7 +273,7 @@
                 `;
             } else {
                 const iframe = document.createElement('iframe');
-                iframe.className = `w-full h-full border-none ${isForceDark ? 'force-dark-iframe' : ''}`;
+                iframe.className = "w-full h-full border-none";
                 iframe.src = currentTab.proxyUrl;
                 container.appendChild(iframe);
             }
@@ -278,7 +301,15 @@
             if (!tab) return;
             
             tab.rawUrl = rawUrl;
-            tab.proxyUrl = `${WORKER_PROXY_URL}?url=${encodeURIComponent(rawUrl)}&saveData=${isSaveData}&desktop=${isDesktopUA}`;
+
+            // Logika Multi-Engine Proxy Selector
+            if (activeEngine === 'corsproxy') {
+                tab.proxyUrl = `https://corsproxy.io/?${encodeURIComponent(rawUrl)}`;
+            } else if (activeEngine === 'allorigins') {
+                tab.proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(rawUrl)}`;
+            } else {
+                tab.proxyUrl = `${WORKER_PROXY_URL}?url=${encodeURIComponent(rawUrl)}&saveData=${isSaveData}&desktop=${isDesktopUA}`;
+            }
 
             try { tab.title = new URL(rawUrl).hostname; } catch(e) { tab.title = "Search"; }
             renderTabs();
@@ -286,12 +317,22 @@
             checkBookmarkStatus();
         }
 
+        function changeEngine() {
+            activeEngine = document.getElementById('engineSelect').value;
+            const textMap = {
+                'worker': 'Worker (Default)',
+                'corsproxy': 'CORS Proxy Mirror',
+                'allorigins': 'AllOrigins Tunnel'
+            };
+            document.getElementById('activeEngineText').textContent = textMap[activeEngine] || activeEngine;
+            navReload();
+        }
+
         function navReload() {
             const currentTab = tabs.find(t => t.id === activeTabId);
             if (currentTab && currentTab.rawUrl) navigateTab(activeTabId, currentTab.rawUrl);
         }
 
-        // --- TOGGLE FEATURES ---
         function toggleIncognito() {
             isIncognito = !isIncognito;
             document.getElementById('incognitoStatus').textContent = isIncognito ? 'Incognito' : 'Normal';
@@ -309,12 +350,6 @@
             document.getElementById('saveDataToggle').className = `p-1.5 rounded border border-cfBorder ${isSaveData ? 'bg-green-900 text-green-300 border-green-600' : 'bg-[#2a2a2a] text-gray-400'}`;
             navReload();
         }
-        function toggleDarkMode() {
-            isForceDark = !isForceDark;
-            document.getElementById('darkStatus').textContent = isForceDark ? 'Force On' : 'Off';
-            document.getElementById('darkModeToggle').className = `p-1.5 rounded border border-cfBorder ${isForceDark ? 'bg-yellow-900 text-yellow-300 border-yellow-600' : 'bg-[#2a2a2a] text-gray-400'}`;
-            renderViewport();
-        }
 
         function quickWipeData() {
             if (confirm('Hapus seluruh histori pencarian, bookmark, dan cache aplikasi?')) {
@@ -324,7 +359,6 @@
             }
         }
 
-        // --- DOWNLOAD & BULK DOWNLOAD ENGINE ---
         function downloadCurrentPage() {
             const currentTab = tabs.find(t => t.id === activeTabId);
             if (!currentTab || !currentTab.rawUrl) return;
@@ -371,7 +405,6 @@
             });
         }
 
-        // --- BOOKMARK & HISTORI ENGINE ---
         function getBookmarks() { return JSON.parse(localStorage.getItem('cp_bookmarks') || '[]'); }
         function checkBookmarkStatus() {
             const currentTab = tabs.find(t => t.id === activeTabId);
